@@ -50,8 +50,17 @@ public class AreaController extends BaseController {
 
 	@RequiresPermissions("sys:area:view")
 	@RequestMapping(value = {"list", ""})
-	public String list(Area area, Model model) {
-		model.addAttribute("list", areaService.findAll());
+	public String list(@RequestParam(required=false) String type, String code2, Area area, Model model) {
+		if(("1").equals(type)){
+			if(StringUtils.isBlank(area.getCode())){
+				area.setCode(code2);
+			}
+			//点击查询按钮
+			model.addAttribute("list", areaService.findList(area));
+		}else{
+			//首次进入区域管理页面
+			model.addAttribute("list", areaService.findAll());
+		}
 		return "modules/sys/areaList";
 	}
 
@@ -120,9 +129,10 @@ public class AreaController extends BaseController {
 			Area e = list.get(i);
 			if (StringUtils.isBlank(extId) || (extId!=null && !extId.equals(e.getId()) && e.getParentIds().indexOf(","+extId+",")==-1)){
 				Map<String, Object> map = Maps.newHashMap();
-				map.put("id", e.getId());
+				map.put("id", e.getCode());
 				map.put("pId", e.getParentId());
 				map.put("name", e.getName());
+				map.put("type", e.getType());
 				mapList.add(map);
 			}
 		}

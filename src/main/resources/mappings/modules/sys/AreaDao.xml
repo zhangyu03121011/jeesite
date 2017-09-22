@@ -4,6 +4,7 @@
     
 	<sql id="areaColumns">
 		a.id,
+		a.parent_id AS "parentId",
 		a.parent_id AS "parent.id",
 		a.parent_ids,
 		a.code,
@@ -11,16 +12,18 @@
 		a.sort,
 		a.type,
 		a.remarks,
-		a.create_by AS "createBy.id",
+		a.create_by AS "create",
 		a.create_date,
-		a.update_by AS "updateBy.id",
+		a.update_by AS "update",
 		a.update_date,
 		a.del_flag,
-		p.name AS "parent.name"
+		a.province_call AS 'provinceCall',
+		a.citys_call AS 'citysCall'
+		<!-- ,p.name AS "parent.name" -->
 	</sql>
 	
 	<sql id="areaJoins">
-		LEFT JOIN sys_office p ON p.id = a.parent_id
+		<!-- LEFT JOIN sys_office p ON p.id = a.parent_id -->
     </sql>
     
 	<select id="get" resultType="Area">
@@ -31,6 +34,14 @@
 		WHERE a.id = #{id}
 	</select>
 	
+	<select id="getAreaByCode" resultType="Area">
+		SELECT
+			<include refid="areaColumns"/>
+		FROM sys_area a
+		<include refid="areaJoins"/>
+		WHERE a.code = #{code}
+	</select>
+	
 	<select id="findList" resultType="Area">
 		SELECT
 			<include refid="areaColumns"/>
@@ -38,9 +49,9 @@
 		<include refid="areaJoins"/>
 		WHERE a.del_flag = #{DEL_FLAG_NORMAL}
 		<!-- 数据范围过滤 -->
-		${sqlMap.dsf}
-		OR a.id = #{currentUser.office.area.id}
-		ORDER BY a.code
+	    <!-- 	${sqlMap.dsf}
+		OR a.id = #{currentUser.office.area.id} -->
+		order by a.type,a.sort,a.code
 	</select>
 	
 	<select id="findAllList" resultType="Area">
@@ -49,7 +60,7 @@
 		FROM sys_area a
 		<include refid="areaJoins"/>
 		WHERE a.del_flag = #{DEL_FLAG_NORMAL}
-		ORDER BY a.code
+		order by a.type,a.sort,a.code
 	</select>
 	
 	<select id="findByParentIdsLike" resultType="Area">
@@ -59,10 +70,10 @@
 			a.parent_ids
 		FROM sys_area a
 		WHERE a.del_flag = #{DEL_FLAG_NORMAL} AND a.parent_ids LIKE #{parentIds}
-		ORDER BY a.code
+		order by a.type,a.sort,a.code 
 	</select>
 	
-	<insert id="insert">
+	<insert id="insertArea">
 		INSERT INTO sys_area(
 			id, 
 			parent_id, 
@@ -76,36 +87,63 @@
 			update_by, 
 			update_date, 
 			remarks, 
-			del_flag
+			del_flag,
+			province_call,
+			citys_call
 		) VALUES (
 			#{id}, 
-			#{parent.id}, 
+			#{parent.code}, 
 			#{parentIds}, 
 			#{code}, 
 			#{name}, 
 			#{sort}, 
 			#{type}, 
-			#{createBy.id}, 
+			#{create}, 
 			#{createDate}, 
-			#{updateBy.id}, 
+			#{update}, 
 			#{updateDate}, 
 			#{remarks}, 
-			#{delFlag}
+			#{delFlag},
+			#{provinceCall},
+			#{citysCall}
 		)
 	</insert>
 	
-	<update id="update">
-		UPDATE sys_area SET 
-			parent_id = #{parent.id}, 
-			parent_ids = #{parentIds}, 
-			code = #{code}, 
-			name = #{name}, 
-			sort = #{sort}, 
-			type = #{type}, 
-			update_by = #{updateBy.id}, 
-			update_date = #{updateDate}, 
-			remarks = #{remarks}
-		WHERE id = #{id}
+	<update id="updateArea">
+		UPDATE sys_area 
+		<set>
+			<if test="parent.code!=null and parent.code!=''">
+				parent_id = #{parent.code}, 	
+			</if>
+			<if test="parentIds!=null and parentIds!=''">
+				parent_ids = #{parentIds}, 		
+			</if>
+			<if test="code!=null and code!=''">
+				code = #{code}, 
+			</if>
+			<if test='name!=null and name!=""'>
+				name = #{name}, 	
+			</if>
+			<if test="sort!=null and sort!=''">
+				sort = #{sort},  		
+			</if>
+			<if test="type!=null and type!=''">
+				type = #{type},  		
+			</if>
+			<if test="update!=null and update!=''">
+				update_by = #{update}, 		
+			</if>
+			<if test="updateDate!=null and updateDate!=''">
+				update_date = #{updateDate},  		
+			</if>
+			<if test="remarks!=null and remarks!=''">
+				remarks = #{remarks},		
+			</if>			
+				province_call=#{provinceCall}, 				 	
+				citys_call=#{citysCall} 				
+		</set> 
+		<!--  WHERE code = #{id}-->
+		where id=#{id}
 	</update>
 	
 	<update id="updateParentIds">
@@ -115,13 +153,87 @@
 		WHERE id = #{id}
 	</update>
 	
-	<update id="delete">
+	<!-- <update id="delete">
 		UPDATE sys_area SET 
 			del_flag = #{DEL_FLAG_DELETE}
 		WHERE id = #{id} OR parent_ids LIKE 
 					<if test="dbName == 'oracle'">'%,'||#{id}||',%'</if>
-					<if test="dbName == 'mssql'">'%,'+#{id}+',%'</if>
 					<if test="dbName == 'mysql'">CONCAT('%,', #{id}, ',%')</if>
-	</update>
+	</update> -->
+	
+	<delete id="delete">
+	    delete from sys_area where code = #{code} 
+		or parent_ids LIKE concat('%',#{code},'%')
+	</delete>
+	
+	<!-- 查询指定code所有的父级编码 -->
+	<select id="findParentId" resultType="Area">
+	    select * from sys_area a 
+	    <where>
+	        <if test="code != null and code != ''">
+	            a.code=#{code}
+	        </if>
+	        <if test="id != null and id != ''">
+	            a.id=#{id}
+	        </if>
+	     </where>
+	</select>
+	
+	<!-- 查省、市、区 -->
+	<select id="findList4" parameterType="map" resultType="Area">
+		SELECT
+			<include refid="areaColumns"/>
+		FROM sys_area a
+		<include refid="areaJoins"/>
+		WHERE a.del_flag = #{DEL_FLAG_NORMAL}
+		<if test="area.code != null and area.code != ''">
+			AND (a.code = #{area.code} OR a.parent_ids LIKE 
+					<!--  <if test="dbName == 'oracle'">'%,'||#{area.code}||',%')</if>-->
+					<if test="area.dbName == 'mysql'">CONCAT('%,', #{area.code}, ',%'))</if>
+					
+					<if test="null != arr and '' != arr">
+						OR 
+						a.code in
+						 <foreach collection="arr" item="item" index="index" open="(" separator="," close=")">
+						     #{item}
+						 </foreach>
+					</if>
+					
+		</if>
+		<!-- 数据范围过滤 -->
+	    <!-- 	${sqlMap.dsf}
+		OR a.id = #{currentUser.office.area.id} -->
+		order by a.type,a.sort,a.code 
+	</select>
+	
+	<!-- 查询所有父级信息 -->
+	<select id="getAreaByPIds" parameterType="map" resultType="Area">
+		SELECT
+			<include refid="areaColumns"/>
+		FROM sys_area a
+		<include refid="areaJoins"/>
+		where a.del_flag = '0' and a.code in
+		<foreach collection="arr" item="item" index="index" open="(" separator="," close=")">
+		    #{item}
+		</foreach>
+	</select>
+	
+	<select id="checkIsLinkSchool" parameterType ="string" resultType="int">
+		SELECT 
+			COUNT(1) 
+		FROM sys_area t 
+		JOIN 
+			t_organization_edu_school	t2
+		ON 
+			t.code = t2.`COUNTY_CODE`
+		AND 
+			t.parent_ids LIKE concat(concat("%",#{code}),"%")
+	</select>
+	
+	<select id="findFirstChild" parameterType ="string" resultType="Area">
+	    select * from sys_area
+	    where del_flag='0' and parent_id=#{parentId}
+	    <!--  del_flag='0' and parent_id=#{parentId}-->
+	</select>
 	
 </mapper>
