@@ -16,10 +16,7 @@
 		a.create_date,
 		a.update_by AS "update",
 		a.update_date,
-		a.del_flag,
-		a.province_call AS 'provinceCall',
-		a.citys_call AS 'citysCall'
-		<!-- ,p.name AS "parent.name" -->
+		a.del_flag
 	</sql>
 	
 	<sql id="areaJoins">
@@ -87,9 +84,7 @@
 			update_by, 
 			update_date, 
 			remarks, 
-			del_flag,
-			province_call,
-			citys_call
+			del_flag
 		) VALUES (
 			#{id}, 
 			#{parent.code}, 
@@ -103,9 +98,7 @@
 			#{update}, 
 			#{updateDate}, 
 			#{remarks}, 
-			#{delFlag},
-			#{provinceCall},
-			#{citysCall}
+			#{delFlag}
 		)
 	</insert>
 	
@@ -139,8 +132,6 @@
 			<if test="remarks!=null and remarks!=''">
 				remarks = #{remarks},		
 			</if>			
-				province_call=#{provinceCall}, 				 	
-				citys_call=#{citysCall} 				
 		</set> 
 		<!--  WHERE code = #{id}-->
 		where id=#{id}
